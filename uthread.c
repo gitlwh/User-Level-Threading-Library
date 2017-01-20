@@ -18,8 +18,19 @@ uthread *initialThread, *mainThread, *newThread, *TempThread, *currentThread;
 static void signal_handler(int sig_nr)
 {
 //    printf("signal_handler working!\n");
- 	swapcontext(&currentThread->context,&scheduler_context);
+    struct itimerval time;
+    
+    time.it_interval.tv_sec = 0;
+    time.it_interval.tv_usec = TIME_INTERVAL;
+    time.it_value.tv_sec = 0;
+    time.it_value.tv_usec = TIME_INTERVAL;
+    if (sig_nr == SIGPROF)
+    {
+        swapcontext(&currentThread->context,&scheduler_context);
         THREAD_YIELD();
+    }
+    else return;
+        
 
 }
 
@@ -29,6 +40,10 @@ static void main_manager()
  //   printf("main_manager working!\n");
 	mainThread->status = 1;
 	setcontext(&mainThread->context);
+    if(mainThread->exited != 1)
+    {
+        mainThread->finished = 1;
+    }
 	setcontext(&scheduler_context);
 	return;
 }
@@ -39,7 +54,10 @@ static void thread_manager(void *func(), void *arg)
 //    printf("thread_manager working!\n");
 	currentThread->status = 1;
 	currentThread->retval = func(arg);
-	currentThread->finished=1;
+	if(currentThread->exited!=1)
+    {
+        currentThread->finished=1;
+    }
 	setcontext(&scheduler_context);
 	return;
 }
@@ -103,15 +121,13 @@ void THREAD_INIT(long period)
 
 	sigaction(SIGPROF, &preemption_handler, NULL);
         
-        
-       
-        mainThread=initialer(initialThread);
-        setitimer(ITIMER_PROF, &time, NULL);
-   
-        currentThread = mainThread;
-		makecontext(&mainThread->context, (void(*)(void)) main_manager, 0, NULL, NULL);
-        TotalthreadID++;
-		numthread++;
+    mainThread=initialer(initialThread);
+    setitimer(ITIMER_PROF, &time, NULL);
+
+    currentThread = mainThread;
+	makecontext(&mainThread->context, (void(*)(void)) main_manager, 0, NULL, NULL);
+    TotalthreadID++;
+	numthread++;
 
 }
 
